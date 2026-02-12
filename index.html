@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>🌸 關西之旅 (Live Sync) 🌸</title>
+<title>🌸 關西之旅 (Live Sync V4) 🌸</title>
 <link href="https://fonts.googleapis.com/css2?family=M+PLUS+Rounded+1c:wght@400;700&display=swap" rel="stylesheet">
 <style>
     /* 樣式區 (Style) */
@@ -13,6 +13,7 @@
     header { text-align: center; margin-bottom: 30px; padding: 20px; background: var(--card-bg); border-radius: 20px; box-shadow: 0 4px 10px rgba(0,0,0,0.05); border: 2px solid var(--primary-pink); }
     h1 { color: var(--primary-pink); margin: 0; font-size: 1.8rem; }
     
+    /* 設定區預設隱藏 */
     .config-area { background: #f0f0f0; padding: 15px; border-radius: 10px; margin-bottom: 15px; border: 1px dashed #999; text-align: left; display: none;} 
     .config-area input { width: 65%; padding: 8px; border: 1px solid #ccc; border-radius: 5px; }
     .config-area button { width: 30%; background: #333; color: white; border: none; padding: 8px; border-radius: 5px; cursor: pointer;}
@@ -70,7 +71,7 @@
 
 <div class="container">
     <header>
-        <h1>🌸 關西之旅 (Live Sync) 🌸</h1>
+        <h1>🌸 關西之旅 (Live Sync V4) 🌸</h1>
         
         <div class="config-area" id="config-area">
             <label style="font-size:0.8rem; font-weight:bold;">Apps Script 網址：</label><br>
@@ -101,7 +102,7 @@
 
 <script>
     // ==========================================
-    // ✅ 已內建您的網址 (直接可用)
+    // ✅ 已內建您的網址
     // ==========================================
     let GAS_URL = "https://script.google.com/macros/s/AKfycbwJUbc4hUPOwrHJaPUITY1NKpq1c25Y0qLSeo79dCx1ZzKW4IdEoj-Rh1qgzRzWQAG5qg/exec"; 
 
@@ -168,18 +169,15 @@
     // 格式化 Google Sheet 時間 (將 1899-12-30T... 轉回 HH:mm)
     function formatTime(val) {
         if(!val) return "";
-        // 如果已經是 10:00 這種格式，直接回傳
         if(val.toString().includes(":") && val.toString().length <= 5) return val;
         
-        // 如果是日期物件字串 (例如 "2024-01-01T10:00:00.000Z")
         const date = new Date(val);
         if(!isNaN(date.getTime())) {
-            // 轉成 HH:mm (注意時區問題，這裡用 getHours 會抓到瀏覽器時區)
             let h = date.getHours().toString().padStart(2, '0');
             let m = date.getMinutes().toString().padStart(2, '0');
             return `${h}:${m}`;
         }
-        return val; // 轉失敗就回傳原值
+        return val;
     }
 
     // 格式化 Google Sheet 日期 (將 2024-02-11T... 轉回 2/11)
@@ -187,7 +185,6 @@
         if(!val) return "";
         const date = new Date(val);
         if(!isNaN(date.getTime())) {
-            // 注意：getMonth() 從 0 開始，所以要 +1
             return `${date.getMonth()+1}/${date.getDate()}`;
         }
         return val;
@@ -214,8 +211,8 @@
                 return {
                     id: Date.now() + index,
                     day: safeRow.day || "1",
-                    date: formatDate(safeRow.date), // 自動修復日期格式
-                    time: formatTime(safeRow.time), // 自動修復時間格式
+                    date: formatDate(safeRow.date), 
+                    time: formatTime(safeRow.time), 
                     act: safeRow.activity || safeRow.act || "",
                     note: safeRow.note || ""
                 };
@@ -258,7 +255,7 @@
                 if(isEditing) toggleEditMode();
                 updateStatus("● 儲存成功", "status-sync");
                 alert("✅ 儲存成功！");
-                if(dataToSave) loadData(); // 如果是初始化，儲存完重讀一次
+                if(dataToSave) loadData(); 
             } else {
                 throw new Error(result.message);
             }
@@ -270,7 +267,6 @@
         });
     }
 
-    // 3. 救援功能：初始化
     function restoreDefaults() {
         if(confirm("這將會覆蓋目前的 Google Sheet 資料，寫入一組預設行程。\n確定要執行嗎？")) {
             saveToGoogle(DEFAULT_DATA);
@@ -291,7 +287,15 @@
 
         sortedDays.forEach(dayNum => {
             const dayObj = daysMap[dayNum];
-            dayObj.items.sort((a,b) => (a.time || "").localeCompare(b.time || ""));
+            
+            // === 關鍵修正：排序邏輯 ===
+            dayObj.items.sort((a,b) => {
+                // 如果時間是空的，把它當成 "zzzz" (ASCII碼很大)，讓它排在最後面
+                // 這樣新增的行程就不會跑到中間了
+                const timeA = a.time ? a.time : "zzzz";
+                const timeB = b.time ? b.time : "zzzz";
+                return timeA.localeCompare(timeB);
+            });
 
             const dayDiv = document.createElement('div');
             dayDiv.className = `timeline-item`;
@@ -308,10 +312,10 @@
                     itemsHtml += `
                     <li class="location-item">
                         <div class="time-col">
-                            <input type="text" value="${item.time}" onchange="updateItem(${item.id}, 'time', this.value)">
+                            <input type="text" value="${item.time}" placeholder="時間" onchange="updateItem(${item.id}, 'time', this.value)">
                         </div>
                         <div class="info-col">
-                            <input type="text" value="${item.act}" placeholder="行程" style="font-weight:bold" onchange="updateItem(${item.id}, 'act', this.value)">
+                            <input type="text" value="${item.act}" placeholder="行程名稱" style="font-weight:bold" onchange="updateItem(${item.id}, 'act', this.value)">
                             <input type="text" value="${item.note}" placeholder="備註" onchange="updateItem(${item.id}, 'note', this.value)">
                         </div>
                         <div class="delete-btn" onclick="deleteItem(${item.id})">🗑️</div>
@@ -330,7 +334,7 @@
 
             let addBtnHtml = "";
             if(isEditing) {
-                addBtnHtml = `<div class="add-btn-area"><button class="btn-add-event" onclick="addEventToDay('${dayNum}', '${dateVal}')">➕ 新增行程至 Day ${dayNum}</button></div>`;
+                addBtnHtml = `<div class="add-btn-area"><button class="btn-add-event" onclick="addEventToDay('${dayNum}', '${dateVal}')">➕ 新增行程 (將出現在最下方)</button></div>`;
             }
 
             dayDiv.innerHTML = `
@@ -349,7 +353,13 @@
     function updateItem(id, f, v) { const i = scheduleData.find(x => x.id === id); if(i) i[f] = v; }
     function updateDayDate(d, v) { scheduleData.forEach(i => { if(i.day == d) i.date = v; }); }
     function deleteItem(id) { if(confirm("刪除？")) { scheduleData = scheduleData.filter(i => i.id !== id); render(); } }
-    function addEventToDay(d, date) { scheduleData.push({ id: Date.now(), day: d, date: date, time: "12:00", act: "新行程", note: "" }); render(); }
+    
+    // === 關鍵修正：新增行程時不帶時間，使其排在最後 ===
+    function addEventToDay(d, date) { 
+        scheduleData.push({ id: Date.now(), day: d, date: date, time: "", act: "新行程", note: "" }); 
+        render(); 
+    }
+    
     function addNewDay() { let max = 0; scheduleData.forEach(i => { if(parseInt(i.day) > max) max = parseInt(i.day); }); scheduleData.push({ id: Date.now(), day: (max+1).toString(), date: "新日期", time: "09:00", act: "新的一天", note: "" }); render(); setTimeout(() => window.scrollTo(0, document.body.scrollHeight), 100); }
 </script>
 
