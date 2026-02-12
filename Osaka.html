@@ -1,0 +1,357 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>🌸 關西之旅 (Live Sync) 🌸</title>
+<link href="https://fonts.googleapis.com/css2?family=M+PLUS+Rounded+1c:wght@400;700&display=swap" rel="stylesheet">
+<style>
+    /* 樣式區 (Style) */
+    :root { --bg-color: #fff9fb; --primary-pink: #ff9a9e; --soft-pink: #fecfef; --card-bg: #ffffff; --text-color: #5d5d5d; --accent-green: #a8e6cf; --accent-blue: #dcebf7; }
+    body { font-family: 'M PLUS Rounded 1c', sans-serif; background-color: var(--bg-color); background-image: radial-gradient(var(--soft-pink) 1px, transparent 1px); background-size: 20px 20px; color: var(--text-color); margin: 0; padding: 20px; line-height: 1.6; }
+    .container { max-width: 700px; margin: 0 auto; padding-bottom: 80px; }
+    header { text-align: center; margin-bottom: 30px; padding: 20px; background: var(--card-bg); border-radius: 20px; box-shadow: 0 4px 10px rgba(0,0,0,0.05); border: 2px solid var(--primary-pink); }
+    h1 { color: var(--primary-pink); margin: 0; font-size: 1.8rem; }
+    
+    .config-area { background: #f0f0f0; padding: 15px; border-radius: 10px; margin-bottom: 15px; border: 1px dashed #999; text-align: left; display: none;} 
+    .config-area input { width: 65%; padding: 8px; border: 1px solid #ccc; border-radius: 5px; }
+    .config-area button { width: 30%; background: #333; color: white; border: none; padding: 8px; border-radius: 5px; cursor: pointer;}
+
+    .status-bar { display: inline-block; padding: 5px 15px; border-radius: 15px; font-size: 0.8rem; background: #eee; color: #555; margin-top: 5px; font-weight: bold; }
+    .status-sync { background: #d4edda; color: #155724; } 
+    .status-working { background: #fff3cd; color: #856404; }
+    .status-error { background: #f8d7da; color: #721c24; }
+
+    .btn-group { margin-top: 15px; display: flex; justify-content: center; gap: 10px; flex-wrap: wrap; }
+    button { border: none; padding: 8px 16px; border-radius: 20px; cursor: pointer; font-weight: bold; transition: 0.2s; white-space: nowrap;}
+    .btn-edit { background: var(--accent-blue); color: #5588a3; }
+    .btn-save { background: #28a745; color: white; display: none; }
+    .btn-refresh { background: #ff9a9e; color: white; }
+    .btn-reset { background: #666; color: white; font-size: 0.8rem; margin-top: 10px; display: none;} 
+    body.editing .btn-reset { display: inline-block; } 
+
+    /* Timeline */
+    .timeline-item { background: var(--card-bg); border-radius: 15px; padding: 20px; margin-bottom: 20px; box-shadow: 0 4px 6px rgba(0,0,0,0.03); border-left: 5px solid #ddd; position: relative; }
+    .date-badge { display: inline-block; background: var(--primary-pink); color: white; padding: 5px 15px; border-radius: 20px; font-weight: bold; font-size: 0.9rem; margin-bottom: 10px; }
+    .location-list { list-style: none; padding: 0; margin: 0; }
+    .location-item { display: flex; align-items: flex-start; margin-bottom: 12px; padding-bottom: 12px; border-bottom: 1px dashed #eee; }
+    .location-item:last-child { border-bottom: none; }
+    
+    .time-col { min-width: 70px; font-weight: bold; color: var(--primary-pink); }
+    .info-col { flex: 1; }
+    .info-col strong { display: block; font-size: 1.05rem; color: #444; }
+    .note { font-size: 0.85rem; color: #888; margin-top: 2px; }
+
+    /* Edit Mode */
+    body.editing .btn-edit { display: none; }
+    body.editing .btn-save { display: inline-block; }
+    body.editing input { border: 1px solid #ddd; background: #f9f9f9; padding: 5px; border-radius: 5px; width: 100%; font-family: inherit; margin-bottom: 5px; box-sizing: border-box; }
+    body.editing .time-col input { width: 70px; }
+    body.editing .delete-btn { display: inline-block; color: #ff5e62; cursor: pointer; margin-left: 10px; font-size: 1.2rem; }
+    .delete-btn { display: none; }
+    .add-btn-area { text-align: center; display: none; margin-top: 10px; }
+    body.editing .add-btn-area { display: block; }
+    .btn-add-event { background: transparent; border: 2px dashed #ddd; color: #aaa; width: 100%; padding: 8px; cursor: pointer; }
+    .btn-add-event:hover { border-color: var(--primary-pink); color: var(--primary-pink); }
+    
+    /* Loader & Log */
+    #loader { position: fixed; top:0; left:0; width:100%; height:100%; background:rgba(255,255,255,0.8); z-index:999; display:flex; justify-content:center; align-items:center; flex-direction:column; display: none;}
+    .spinner { border: 5px solid #f3f3f3; border-top: 5px solid var(--primary-pink); border-radius: 50%; width: 40px; height: 40px; animation: spin 1s linear infinite; margin-bottom: 10px; }
+    @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+    #debug-log { display: none; margin-top: 20px; padding: 10px; background: #333; color: #0f0; font-size: 0.8rem; height: 100px; overflow-y: scroll; text-align: left; }
+</style>
+</head>
+<body>
+
+<div id="loader">
+    <div class="spinner"></div>
+    <div id="loader-text">載入中...</div>
+</div>
+
+<div class="container">
+    <header>
+        <h1>🌸 關西之旅 (Live Sync) 🌸</h1>
+        
+        <div class="config-area" id="config-area">
+            <label style="font-size:0.8rem; font-weight:bold;">Apps Script 網址：</label><br>
+            <input type="text" id="gas-url-input" />
+            <button onclick="saveUrlAndConnect()">🔗 重設連線</button>
+        </div>
+
+        <div id="status-bar" class="status-bar">準備連線...</div>
+        
+        <div class="btn-group">
+            <button class="btn-refresh" onclick="loadData()">🔄 重新整理</button>
+            <button class="btn-edit" onclick="toggleEditMode()">✏️ 編輯行程</button>
+            <button class="btn-save" onclick="saveToGoogle()">☁️ 儲存至雲端</button>
+        </div>
+        
+        <button class="btn-reset" onclick="restoreDefaults()">🛠️ 初始化資料 (修復空白問題)</button>
+        <div style="font-size:0.7rem; color:#ccc; margin-top:10px; cursor:pointer;" onclick="toggleConfig()">⚙️ 設定</div>
+    </header>
+
+    <div id="schedule-content"></div>
+    
+    <div class="add-btn-area">
+         <button class="btn-add-event" onclick="addNewDay()" style="border: 2px solid var(--primary-pink); color: var(--primary-pink); font-weight:bold; margin-top:20px;">➕ 新增全新的一天</button>
+    </div>
+
+    <div id="debug-log"></div>
+</div>
+
+<script>
+    // ==========================================
+    // ✅ 已內建您的網址 (直接可用)
+    // ==========================================
+    let GAS_URL = "https://script.google.com/macros/s/AKfycbwJUbc4hUPOwrHJaPUITY1NKpq1c25Y0qLSeo79dCx1ZzKW4IdEoj-Rh1qgzRzWQAG5qg/exec"; 
+
+    let scheduleData = [];
+    let isEditing = false;
+    
+    // 預設資料 (救援用)
+    const DEFAULT_DATA = [
+        {id: 1, day: "1", date: "2/11", time: "06:35", act: "抵達神戶機場", note: "飛機落地 ✈️"},
+        {id: 2, day: "1", date: "2/11", time: "11:00", act: "三宮 (午餐)", note: "寄放行李、吃神戶牛? 🥩"},
+        {id: 3, day: "1", date: "2/11", time: "13:00", act: "神戶觀光", note: "北野異人館街、神戶港塔 📸"},
+        {id: 4, day: "1", date: "2/11", time: "15:00", act: "前往鶴橋 Check-in", note: "搭車去飯店 🏨"},
+        {id: 5, day: "1", date: "2/11", time: "18:00", act: "晚餐", note: "在附近吃晚餐 🍜"},
+        {id: 6, day: "2", date: "2/12", time: "10:00", act: "出發", note: "前往箕面萱野站 🚃"},
+        {id: 7, day: "2", date: "2/12", time: "12:00", act: "午餐", note: "箕面萱野站附近 🍱"},
+        {id: 8, day: "2", date: "2/12", time: "13:00", act: "勝尾寺", note: "祈求勝運達摩 (～14:30) ⛩️"},
+        {id: 9, day: "2", date: "2/12", time: "15:30", act: "心齋橋 逛街", note: "道頓堀、難波八阪神社 🛍️"},
+        {id: 10, day: "2", date: "2/12", time: "19:00", act: "晚餐", note: "吃好吃的！ 🍽️"},
+        {id: 11, day: "3", date: "2/13", time: "09:00", act: "環球影城 USJ", note: "全日暢玩 (或 奈良+大阪) 🌍"},
+        {id: 12, day: "4", date: "2/14", time: "07:30", act: "出發", note: "前往京都站 (08:30抵達) 🚅"},
+        {id: 13, day: "4", date: "2/14", time: "09:00", act: "伏見稻荷大社", note: "千本鳥居 (約1小時) 🦊"},
+        {id: 14, day: "4", date: "2/14", time: "12:00", act: "清水寺、八坂神社", note: "午餐 + 逛街 (約4小時) 🍵"},
+        {id: 15, day: "4", date: "2/14", time: "16:00", act: "二條城 → 金閣寺", note: "吃抹茶點心 🍡"},
+        {id: 16, day: "4", date: "2/14", time: "18:00", act: "回大阪", note: "吃晚餐 🍖"},
+        {id: 17, day: "5", date: "2/15", time: "09:00", act: "方案選擇", note: "方案1: 奈良公園 / 方案2: 美術館 🤔"},
+        {id: 18, day: "5", date: "2/15", time: "14:00", act: "大阪城", note: "歷史巡禮 🏯"},
+        {id: 19, day: "5", date: "2/15", time: "15:00", act: "市區逛街", Note: "最後採買 🎁"},
+        {id: 20, day: "6", date: "2/16", time: "10:55", act: "關西機場起飛", note: "回程 ✈️"},
+        {id: 21, day: "6", date: "2/16", time: "13:10", act: "抵達桃園機場", note: "平安回家 🏠"}
+    ];
+
+    window.onload = function() {
+        // 優先使用內建網址，但如果使用者之前有手動輸入過，則使用 localStorage
+        const savedUrl = localStorage.getItem("my_gas_url");
+        if(savedUrl) {
+            GAS_URL = savedUrl;
+        }
+        document.getElementById("gas-url-input").value = GAS_URL;
+        loadData();
+    };
+
+    function saveUrlAndConnect() {
+        const url = document.getElementById("gas-url-input").value.trim();
+        if(!url.startsWith("https://script.google.com/")) {
+            alert("網址格式錯誤！"); return;
+        }
+        localStorage.setItem("my_gas_url", url);
+        GAS_URL = url;
+        loadData();
+    }
+
+    function toggleConfig() {
+        const el = document.getElementById('config-area');
+        el.style.display = el.style.display === 'none' ? 'block' : 'none';
+    }
+
+    function log(msg) {
+        console.log(msg);
+        const el = document.getElementById('debug-log');
+        el.innerHTML += `[${new Date().toLocaleTimeString()}] ${msg}<br>`;
+        if(msg.includes("Error")) el.style.display = "block";
+    }
+
+    // 格式化 Google Sheet 時間 (將 1899-12-30T... 轉回 HH:mm)
+    function formatTime(val) {
+        if(!val) return "";
+        // 如果已經是 10:00 這種格式，直接回傳
+        if(val.toString().includes(":") && val.toString().length <= 5) return val;
+        
+        // 如果是日期物件字串 (例如 "2024-01-01T10:00:00.000Z")
+        const date = new Date(val);
+        if(!isNaN(date.getTime())) {
+            // 轉成 HH:mm (注意時區問題，這裡用 getHours 會抓到瀏覽器時區)
+            let h = date.getHours().toString().padStart(2, '0');
+            let m = date.getMinutes().toString().padStart(2, '0');
+            return `${h}:${m}`;
+        }
+        return val; // 轉失敗就回傳原值
+    }
+
+    // 格式化 Google Sheet 日期 (將 2024-02-11T... 轉回 2/11)
+    function formatDate(val) {
+        if(!val) return "";
+        const date = new Date(val);
+        if(!isNaN(date.getTime())) {
+            // 注意：getMonth() 從 0 開始，所以要 +1
+            return `${date.getMonth()+1}/${date.getDate()}`;
+        }
+        return val;
+    }
+
+    // 1. 讀取
+    function loadData() {
+        if(!GAS_URL) return;
+        showLoader("正在下載...");
+        updateStatus("連線中...", "status-working");
+        log("開始讀取: " + GAS_URL);
+
+        fetch(GAS_URL + "?action=read")
+        .then(res => res.json())
+        .then(data => {
+            log("讀取成功，筆數: " + (Array.isArray(data) ? data.length : "0"));
+            
+            if (!Array.isArray(data)) data = [];
+            
+            scheduleData = data.map((row, index) => {
+                let safeRow = {};
+                Object.keys(row).forEach(k => safeRow[k.toLowerCase()] = row[k]);
+                
+                return {
+                    id: Date.now() + index,
+                    day: safeRow.day || "1",
+                    date: formatDate(safeRow.date), // 自動修復日期格式
+                    time: formatTime(safeRow.time), // 自動修復時間格式
+                    act: safeRow.activity || safeRow.act || "",
+                    note: safeRow.note || ""
+                };
+            });
+            
+            if(scheduleData.length === 0) {
+                 updateStatus("目前無資料", "status-working");
+                 document.getElementById('schedule-content').innerHTML = "<div style='text-align:center; padding:20px; color:#999;'>目前沒有行程資料。<br>請切換到「✏️ 編輯模式」並點擊「🛠️ 初始化資料」按鈕。</div>";
+            } else {
+                 render();
+                 updateStatus("● 已同步", "status-sync");
+            }
+            hideLoader();
+        })
+        .catch(err => {
+            hideLoader();
+            updateStatus("連線失敗", "status-error");
+            log("讀取錯誤: " + err.message);
+        });
+    }
+
+    // 2. 寫入
+    function saveToGoogle(dataToSave) {
+        if(!GAS_URL) return;
+        showLoader("正在儲存...");
+        
+        const payload = (dataToSave || scheduleData).map(item => ({
+            day: item.day, date: item.date, time: item.time, activity: item.act, note: item.note
+        }));
+
+        fetch(GAS_URL + "?action=write", {
+            method: "POST",
+            headers: { "Content-Type": "text/plain" },
+            body: JSON.stringify(payload)
+        })
+        .then(res => res.json())
+        .then(result => {
+            hideLoader();
+            if(result.status === "success") {
+                if(isEditing) toggleEditMode();
+                updateStatus("● 儲存成功", "status-sync");
+                alert("✅ 儲存成功！");
+                if(dataToSave) loadData(); // 如果是初始化，儲存完重讀一次
+            } else {
+                throw new Error(result.message);
+            }
+        })
+        .catch(err => {
+            hideLoader();
+            log("儲存錯誤: " + err.message);
+            alert("儲存失敗: " + err.message);
+        });
+    }
+
+    // 3. 救援功能：初始化
+    function restoreDefaults() {
+        if(confirm("這將會覆蓋目前的 Google Sheet 資料，寫入一組預設行程。\n確定要執行嗎？")) {
+            saveToGoogle(DEFAULT_DATA);
+        }
+    }
+
+    function render() {
+        const container = document.getElementById('schedule-content');
+        container.innerHTML = "";
+        
+        let daysMap = {};
+        scheduleData.forEach(item => {
+            if(!daysMap[item.day]) daysMap[item.day] = { date: item.date, items: [] };
+            daysMap[item.day].items.push(item);
+        });
+
+        const sortedDays = Object.keys(daysMap).sort((a,b) => parseInt(a) - parseInt(b));
+
+        sortedDays.forEach(dayNum => {
+            const dayObj = daysMap[dayNum];
+            dayObj.items.sort((a,b) => (a.time || "").localeCompare(b.time || ""));
+
+            const dayDiv = document.createElement('div');
+            dayDiv.className = `timeline-item`;
+
+            let dateVal = dayObj.items[0] ? dayObj.items[0].date : "";
+            let dateHtml = `Day ${dayNum} • ${dateVal}`;
+            if(isEditing) {
+                dateHtml = `Day ${dayNum} • <input type="text" value="${dateVal}" style="width:100px; display:inline-block;" onchange="updateDayDate('${dayNum}', this.value)">`;
+            }
+
+            let itemsHtml = "";
+            dayObj.items.forEach(item => {
+                if(isEditing) {
+                    itemsHtml += `
+                    <li class="location-item">
+                        <div class="time-col">
+                            <input type="text" value="${item.time}" onchange="updateItem(${item.id}, 'time', this.value)">
+                        </div>
+                        <div class="info-col">
+                            <input type="text" value="${item.act}" placeholder="行程" style="font-weight:bold" onchange="updateItem(${item.id}, 'act', this.value)">
+                            <input type="text" value="${item.note}" placeholder="備註" onchange="updateItem(${item.id}, 'note', this.value)">
+                        </div>
+                        <div class="delete-btn" onclick="deleteItem(${item.id})">🗑️</div>
+                    </li>`;
+                } else {
+                    itemsHtml += `
+                    <li class="location-item">
+                        <div class="time-col">${item.time}</div>
+                        <div class="info-col">
+                            <strong>${item.act}</strong>
+                            <div class="note">${item.note}</div>
+                        </div>
+                    </li>`;
+                }
+            });
+
+            let addBtnHtml = "";
+            if(isEditing) {
+                addBtnHtml = `<div class="add-btn-area"><button class="btn-add-event" onclick="addEventToDay('${dayNum}', '${dateVal}')">➕ 新增行程至 Day ${dayNum}</button></div>`;
+            }
+
+            dayDiv.innerHTML = `
+                <div class="date-badge">${dateHtml}</div>
+                <ul class="location-list">${itemsHtml}</ul>
+                ${addBtnHtml}
+            `;
+            container.appendChild(dayDiv);
+        });
+    }
+
+    function showLoader(msg) { document.getElementById('loader').style.display = 'flex'; document.getElementById('loader-text').innerText = msg; }
+    function hideLoader() { document.getElementById('loader').style.display = 'none'; }
+    function updateStatus(msg, type) { const el = document.getElementById('status-bar'); el.innerText = msg; el.className = 'status-bar ' + (type || ''); }
+    function toggleEditMode() { isEditing = !isEditing; document.body.classList.toggle('editing'); render(); }
+    function updateItem(id, f, v) { const i = scheduleData.find(x => x.id === id); if(i) i[f] = v; }
+    function updateDayDate(d, v) { scheduleData.forEach(i => { if(i.day == d) i.date = v; }); }
+    function deleteItem(id) { if(confirm("刪除？")) { scheduleData = scheduleData.filter(i => i.id !== id); render(); } }
+    function addEventToDay(d, date) { scheduleData.push({ id: Date.now(), day: d, date: date, time: "12:00", act: "新行程", note: "" }); render(); }
+    function addNewDay() { let max = 0; scheduleData.forEach(i => { if(parseInt(i.day) > max) max = parseInt(i.day); }); scheduleData.push({ id: Date.now(), day: (max+1).toString(), date: "新日期", time: "09:00", act: "新的一天", note: "" }); render(); setTimeout(() => window.scrollTo(0, document.body.scrollHeight), 100); }
+</script>
+
+</body>
+</html>
